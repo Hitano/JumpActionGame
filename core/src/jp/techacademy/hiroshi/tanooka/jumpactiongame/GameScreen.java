@@ -4,6 +4,7 @@ package jp.techacademy.hiroshi.tanooka.jumpactiongame;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.ScreenAdapter;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -45,6 +46,7 @@ public class GameScreen extends ScreenAdapter {
     Random mRandom;
     List<Step> mSteps;
     List<Star> mStars;
+    List<Enemy> mEnemies;
     Ufo mUfo;
     Player mPlayer;
 
@@ -56,6 +58,9 @@ public class GameScreen extends ScreenAdapter {
     int mHighScore;
     Preferences mPrefs;
 
+    // 効果音の準備
+    Sound sound = Gdx.audio.newSound(Gdx.files.internal("collisionEnemy.mp3"));
+
     public GameScreen(JumpActionGame game) {
         mGame = game;
 
@@ -65,6 +70,7 @@ public class GameScreen extends ScreenAdapter {
         mBg = new Sprite(new TextureRegion(bgTexture, 0, 0, 540, 810));
         mBg.setSize(CAMERA_WIDTH, CAMERA_HEIGHT);
         mBg.setPosition(0,0);
+
 
         // カメラ、ViewPortを生成、設定する
         mCamera = new OrthographicCamera();
@@ -80,6 +86,7 @@ public class GameScreen extends ScreenAdapter {
         mRandom = new Random();
         mSteps = new ArrayList<Step>();
         mStars = new ArrayList<Star>();
+        mEnemies = new ArrayList<Enemy>();
         mGameState = GAME_STATE_READY;
         mTouchPoint = new Vector3();
         mFont = new BitmapFont(Gdx.files.internal("font.fnt"), Gdx.files.internal("font.png"), false);
@@ -127,6 +134,11 @@ public class GameScreen extends ScreenAdapter {
             mStars.get(i).draw(mGame.batch);
         }
 
+        // Enemy
+        for (int i = 0; i < mEnemies.size(); i++) {
+            mEnemies.get(i).draw(mGame.batch);
+        }
+
         // Ufo
         mUfo.draw(mGame.batch);
 
@@ -157,23 +169,33 @@ public class GameScreen extends ScreenAdapter {
         Texture starTexture = new Texture("star.png");
         Texture playerTexture = new Texture("uma.png");
         Texture ufoTexture = new Texture("ufo.png");
+        Texture enemyTexture = new Texture("enemy.png");
 
-        // StepとStarをゴールの高さまで配置していく
+        // StepとStarとEnemyをゴールの高さまで配置していく
         float y = 0;
 
         float maxJumpHeight = Player.PLAYER_JUMP_VELOCIRY * Player.PLAYER_JUMP_VELOCIRY / (2 * -GRAVITY);
         while (y < WORLD_HEIGHT - 5) {
-            int type = mRandom.nextFloat() > 0.8f ? Step.STEP_TYPE_MOVING : Step.STEP_TYPE_STATIC;
+            int type = mRandom.nextFloat() > 0.8f ? Step.STEP_TYPE_MOVING : Step.STEP_TYPE_STATIC;  // 80%の確率で動かないタイプ、20%で動くタイプ
             float x = mRandom.nextFloat() * (WORLD_WIDTH - Step.STEP_WIDTH);
 
+            // Stepの配置
             Step step = new Step(type, stepTexture, 0, 0, 144, 36);
             step.setPosition(x, y);
             mSteps.add(step);
 
+            // Starの配置
             if (mRandom.nextFloat() > 0.6f) {
                 Star star = new Star(starTexture, 0, 0, 72, 72);
                 star.setPosition(step.getX() + mRandom.nextFloat(), step.getY() + Star.STAR_HEIGHT + mRandom.nextFloat() * 3);
                 mStars.add(star);
+            }
+
+            // Enemyの配置
+            if (mRandom.nextFloat() > 0.7f) {
+                Enemy enemy = new Enemy(enemyTexture, 0, 0, 72, 72);
+                enemy.setPosition(step.getX() + mRandom.nextFloat(), step.getY() + Star.STAR_HEIGHT + mRandom.nextFloat() * 3);
+                mEnemies.add(enemy);
             }
 
             y += (maxJumpHeight - 0.5f);
@@ -228,6 +250,11 @@ public class GameScreen extends ScreenAdapter {
             mSteps.get(i).update(delta);
         }
 
+        // Enemy
+        for (int i = 0; i < mEnemies.size(); i++) {
+            mEnemies.get(i).update(delta);
+        }
+
         // Player
         if (mPlayer.getY() <= 0.5f) {
             mPlayer.hitStep();
@@ -253,6 +280,16 @@ public class GameScreen extends ScreenAdapter {
         if (mPlayer.getBoundingRectangle().overlaps(mUfo.getBoundingRectangle())) {
             mGameState = GAME_STATE_GAMEOVER;
             return;
+        }
+
+        // Enemyとの当たり判定
+        for (int i = 0; i < mEnemies.size(); i++) {
+            Enemy enemy = mEnemies.get(i);
+            if (mPlayer.getBoundingRectangle().overlaps(enemy.getBoundingRectangle())) {
+                sound.play(1.0f);
+                mGameState = GAME_STATE_GAMEOVER;
+                return;
+            }
         }
 
         // Starとの当たり判定
