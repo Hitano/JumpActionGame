@@ -3,6 +3,7 @@ package jp.techacademy.hiroshi.tanooka.jumpactiongame;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.ScreenAdapter;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -23,6 +24,9 @@ public class ResultScreen extends ScreenAdapter {
     BitmapFont mFont;
 
     int mScore;
+
+    // コンティニュー時の効果音
+    Sound continuePlay = Gdx.audio.newSound(Gdx.files.internal("continue01.mp3"));
 
     public ResultScreen(JumpActionGame game, int score) {
 
@@ -63,13 +67,21 @@ public class ResultScreen extends ScreenAdapter {
         mGame.batch.begin();
         mBg.draw(mGame.batch);
         mFont.draw(mGame.batch, "Score: " + mScore, 0, GUI_HEIGHT / 2 + 40, GUI_WIDTH, Align.center, false);
-        mFont.draw(mGame.batch, "Retry?", 0, GUI_HEIGHT / 2 - 40, GUI_WIDTH, Align.center, false);
+        // UFOまで到達している場合
+        if (mScore >= 1000000) {
+            mFont.draw(mGame.batch, "Congratulations!", 0, GUI_HEIGHT / 2 - 20, GUI_WIDTH, Align.center, false);
+            mFont.draw(mGame.batch, "Thank you", 0, GUI_HEIGHT / 2 - 60, GUI_WIDTH, Align.center, false);
+            mFont.draw(mGame.batch, "for playing!", 0, GUI_HEIGHT / 2 - 100, GUI_WIDTH, Align.center, false);
+        } else {    // 途中でGAMEOVERになった場合
+            mFont.draw(mGame.batch, "Retry?", 0, GUI_HEIGHT / 2 - 40, GUI_WIDTH, Align.center, false);
+        }
         mGame.batch.end();
 
         if (Gdx.input.justTouched()) {
             if (mGame.mRequestHandler != null) {
                 mGame.mRequestHandler.showAds(false);
             }
+            continuePlay.play(0.6f);
             mGame.setScreen(new GameScreen(mGame));
         }
     }
